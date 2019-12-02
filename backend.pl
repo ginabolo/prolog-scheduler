@@ -2,99 +2,132 @@
 
 % relationships:
 % class: 
-	% - department (eg cpsc)
-	% - sections (format: cpsc_310_101), (optionally including tutorial_sections (format: cpsc_310_T1B))
+	% - subject (eg cpsc)
+	% - code (course code)
+	% - name
 	% - credits
-	% - year_level
 % section: 
+	% - subject (eg cpsc)
+	% - course 
+	% - code (section code)
 	% - term
-	% - start_time
-	% - end_time
-	% - days (m w f tues thurs)
+	% - start_hour
+	% - start_minute
+	% - end_hour
+	% - end_minute
+	% - days 
 	% - instructor, location
 	% - class
 % time(hours, minutes)
+:- include('courses.pl').
+:- include('sections.pl').
+:- use_module(library(time)).
 
 
-
-% Takes a list of classes and  list of sections and makes sure they correspond.
+% Takes a list of classes and list of sections and makes sure they correspond.
 % Will force the ordering to match - WLOG, and should help restrict the set of answers.
-schedule([Class|ListC], [Section|ListS]) :- rdf(Section, class, Class), schedule([ListC], [ListS]).
+% Remove anonymous variable, force uniqueness
+
+% Use: Classes constraints, schedule(Classes, Sections), Section constraints
+schedule(ListC, ListS) :- set(ListC), set(ListS),
+						 \+ conflicts(ListS), join(ListC, ListS),
+						 subtract(ListC, [var(_)], ListC), subtract(ListS, [var(_)], ListS).
+
+join([],[]).
+join([Class|ListC], [Section|ListS]) :- course(Class, subject, Sub), section(Section, subject, Sub), 
+											course(Class, code, C), section(Section, course, C),
+											join(ListC, ListS).
+
+set([]).
+set([E|Es]) :-
+   maplist(dif(E), Es),
+   set(Es).
+
+% Takes list of sections, and a constant denoting an instructor
+hasInstructor([S1|_], Instructor) :- section(S1, instructor, Instructor).
+hasInstructor([_|Rest], Instructor) :- hasInstructor(Rest, Instructor).
 
 
 % Takes list of sections, and a constant denoting an instructor
-hasInstructor([S1|Rest], Instructor) :- rdf(S1, instructor, Instructor).
-hasInstructor([S1|Rest], Instructor) :- hasInstructor(Rest, Instructor).
+avoidInstructor([], _).
+avoidInstructor([S1|Rest], Instructor) :- section(S1, instructor, I), dif(I, Instructor), avoidInstructor(Rest, Instructor).
 
 
-% Takes list of sections, and a constant denoting an instructor
-avoidInstructor([S1|Rest], Instructor) :- \+ rdf(S1, instructor, Instructor), avoidInstructor(Rest, Instructor).
+% takes a list of sections, a number of classes for each term
+meetsMaxPerTerm([], M1, M2) :- M1 >= 0, M2 >= 0.
+meetsMaxPerTerm([S|Rest], M1, M2) :- section(S, term, "1"),
+									 MLeft is M1-1,
+									 meetsMaxPerTerm(Rest, MLeft, M2).
+meetsMaxPerTerm([S|Rest], M1, M2) :- section(S, term, "2"),
+									 MLeft is M2-1,
+									 meetsMaxPerTerm(Rest, M1, MLeft).
 
-
-% takes a list of sections, a constant denoting a year level, and a number of classes which should be from this year level
-belowMaxPerTerm([], M1, M2) :- M1 > 0, M2 > 0.
-belowMaxPerTerm([S|Rest], M1, M2) :- rdf(S, term, 1),
-									 belowMaxPerTerm(Rest, MLeft, M2),
-									 MLeft is M1-1.
-belowMaxPerTerm([S|Rest], M1, M2) :- rdf(S, term, 2),
-									 belowMaxPerTerm(Rest, M1, MLeft),
-									 MLeft is M2-1.
+% takes a list of sections, a number of classes for each term
+meetsMinPerTerm(_, M1, M2) :- M1 =< 0, M2 =< 0.
+meetsMinPerTerm([S|Rest], M1, M2) :- section(S, term, "1"),
+									 MLeft is M1-1,
+									 meetsMinPerTerm(Rest, MLeft, M2).
+meetsMinPerTerm([S|Rest], M1, M2) :- section(S, term, "2"),
+									 MLeft is M2-1,
+									 meetsMinPerTerm(Rest, M1, MLeft).
 
 
 % takes a list of classes, a constant denoting a year level, and a number of classes which should be from this year level
 hasEnoughOfYearLevel(_, _, 0).
-hasEnoughOfYearLevel([Class|Lst], Y, Num) :- hasEnoughOfYearLevel(Lst, Y, NumLeft),
-										rdf(Class, year_level, Y),
-										NumLeft is Num-1.
-
-
-% takes a list of classes, a constant denoting a department, and a number of classes which should be from this department
-hasEnoughOfDepartment(_, _, 0).
-hasEnoughOfDepartment([Class|Lst], Dept, Num) :- hasEnoughOfDepartment(Lst, Dept, NumLeft),
-										rdf(Class, department, Dept),
-										NumLeft is Num-1.
-hasEnoughOfDepartment([Class|Lst], Dept, Num) :- hasEnoughOfDepartment(Lst, Dept, Num),
-										\+ rdf(Class, department, Dept).
+hasEnoughOfYearLevel([Class|Lst], Y, Num) :- course(Class, code, CS),
+										number_string(C, CS),
+										C > Y*100,
+										NumLeft is Num-1,
+										hasEnoughOfYearLevel(Lst, Y, NumLeft).
 
 
 % takes a list of classes, and a minimum number of credits
-hasEnoughCredits(_, 0).
-hasEnoughCredits([Class|Lst], NumCreds) :- hasEnoughCredits(Lst, NumCredsLeft),
-										rdf(Class, credits, CredGained),
-										NumCredsLeft is NumCreds-CredGained.
+hasEnoughCredits(_, N) :- N =< 0.
+hasEnoughCredits([Class|Lst], NumCreds) :- course(Class, credits, CredGainedS),
+										number_string(CredGained, CredGainedS),
+										NumCredsLeft is NumCreds-CredGained,
+										hasEnoughCredits(Lst, NumCredsLeft).
 
 
 % takes a list of sections and a constant denoting a day
-notOnDay([S1|Rest], Day) :- \+ rdf(S1, days, Day),
+notOnDay([], _).
+notOnDay([S1|Rest], Day) :- section(S1, days, D), dif(D, Day),
 							notOnDay(Rest, Day).
 
 % takes a list of sections
-conflicts([S1|S2|Rest]) :- conflicts(S1, S2).
-conflicts([S1|S2|Rest]) :- conflicts([S1|Rest]).
-conflicts([S1|S2|Rest]) :- conflicts([S2|Rest]).
+conflicts([S1,S2|_]) :- conflicts(S1, S2).
+conflicts([S1,_|Rest]) :- conflicts([S1|Rest]).
+conflicts([_,S2|Rest]) :- conflicts([S2|Rest]).
 
 % takes two sections as input
 % checks if S2 conflicts with S1
-conflicts(S1, S2) :- rdf(S1, start_time, ST1), rdf(S1, end_time, ET1), 
-					rdf(S2, start_time, ST2), rdf(S2, end_time, ET2), 
-					rdf(S2, days, D), rdf(S2, days, D), 
-					after(ST2, ST1), before(ST2, ET1).
+conflicts(S1, S2) :- section(S1, start_hour, SH1), section(S1, start_minute, SM1), 
+					section(S1, end_hour, EH1), section(S1, end_minute, EM1), 
+					section(S2, start_hour, SH2), section(S2, start_minute, SM2), 
+					section(S1, days, D), section(S2, days, D), 
+					section(S1, term, T), section(S2, term, T), 
+					after(time(SH2,SM2), time(SH1,SM1)), before(time(SH2,SM2), time(EH1,EM1)).
 
-conflicts(S1, S2) :- rdf(S1, start_time, ST1), rdf(S1, end_time, ET1), 
-					rdf(S2, start_time, ST2), rdf(S2, end_time, ET2), 
-					rdf(S2, days, D), rdf(S2, days, D), 
-					after(ET2, ST1), before(ET2, ET1).
+conflicts(S1, S2) :- section(S1, start_hour, SH1), section(S1, start_minute, SM1), 
+					section(S1, end_hour, EH1), section(S1, end_minute, EM1), 
+					section(S2, end_hour, EH2), section(S2, end_minute, EM2), 
+					section(S1, days, D), section(S2, days, D), 
+					section(S1, term, T), section(S2, term, T), 
+					after(time(EH2, EM2), time(SH1, SM1)), before(time(EH2, EM2), time(EH1, EM1)).
 
 % takes a list of sections and a time
 allBefore([], _).
-allBefore([S1|Rest], Time) :- rdf(S1, start_time, ST1), before(ST1, Time), allBefore(Rest, Time).
+allBefore([S1|Rest], Time) :- section(S1, start_hour, SH), section(S1, start_minute, SM),
+							  before(time(SH, SM, Time)), allBefore(Rest, Time).
 
 % takes a list of sections and a time
 allAfter([], _).
-allAfter([S1|Rest], Time) :- rdf(S1, start_time, ST1), after(ST1, Time), allBefore(Rest, Time).
+allAfter([S1|Rest], Time) :- section(S1, start_hour, SH), section(S1, start_minute, SM), 
+							 after(time(SH, SM), Time), allBefore(Rest, Time).
 
-before(time(H1, _), time(H2, _)) :- H1 < H2.
-before(time(H, M1), time(H, M2)) :- M1 < M2.
+before(time(SH1, _), time(SH2, _)) :- number_string(H1, SH1), number_string(H2, SH2), H1 =< H2.
+before(time(H, SM1), time(H, SM2)) :- number_string(M1, SM1), number_string(M2, SM2), M1 =< M2.
 
-after(time(H1, _), time(H2, _)) :- H1 > H2.
-after(time(H, M1), time(H, M2)) :- M1 > M2.
+after(time(SH1, _), time(SH2, _)) :- number_string(H1, SH1), number_string(H2, SH2), H1 >= H2.
+after(time(H, SM1), time(H, SM2)) :- number_string(M1, SM1), number_string(M2, SM2), M1 >= M2.
+
