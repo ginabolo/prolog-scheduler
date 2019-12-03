@@ -16,6 +16,17 @@ section_starts_before_time(S, TH, TM) :-
         SHN #= TH,
         SMN #< TM.
 
+section_starts_after_time(S, TH, _) :-
+        section(S, start_hour, SH),
+        number_string(SHN, SH),
+        SHN #> TH.
+section_starts_after_time(S, TH, TM) :-
+        section(S, start_hour, SH), number_string(SHN, SH),
+        section(S, start_minute, SM),
+        number_string(SMN, SM),
+        SHN #= TH,
+        SMN #> TM.
+
 %section_starts_before_time
 
 % generate_schedule(+ Courses, + Constraints, - Schedule) generates a schedule involving all courses given satisfying all constraints. 
