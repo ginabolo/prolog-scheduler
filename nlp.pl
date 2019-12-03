@@ -21,8 +21,8 @@ place(Building, Room, Result) :-
 instructor(First, Last, Result) :-
     string_upper(First, FirstUpper),
     string_upper(Last, LastUpper),
-    string_concat(LastUpper, ", ", R),
-    string_concat(R, FirstUpper, Result).
+    string_concat(FirstUpper, " ", R),
+    string_concat(R, LastUpper, Result).
 
 % proposition(L0, L1, Entity) is true if L0-L1 represents a proposition that can be used for a function in the scheduler.
 proposition([with, Value, credits | L], L, Entity) :- 
