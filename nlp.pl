@@ -103,7 +103,7 @@ ask(Q,A) :-
     question(Q,[],A).
 
 q(Ans) :-
-    write("Ask me: "), flush_output(current_output),
+    write("Query: "), flush_output(current_output),
     readln(Ln),
     question(Ln,End,Ans),
     member(End,[[],['?'],['.']]).
