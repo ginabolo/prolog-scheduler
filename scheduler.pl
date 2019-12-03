@@ -29,8 +29,8 @@
 % Remove anonymous variable, force uniqueness
 
 % Use: Classes constraints, schedule(Classes, Sections), Section constraints
-schedule(ListC, ListS) :- set(ListC), set(ListS),
-						 \+ conflicts(ListS), join(ListC, ListS),
+schedule(ListC, ListS) :- set(ListC), set(ListS), join(ListC, ListS),
+						 \+ conflicts(ListS), 
 						 subtract(ListC, [var(_)], ListC), subtract(ListS, [var(_)], ListS).
 
 schedule(ListC) :- set(ListC), subtract(ListC, [var(_)], ListC).
