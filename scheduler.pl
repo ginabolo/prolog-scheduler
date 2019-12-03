@@ -28,15 +28,31 @@
 % Will force the ordering to match - WLOG, and should help restrict the set of answers.
 % Remove anonymous variable, force uniqueness
 
+schedule([], _) :- writeln("empty"), !, fail.
+
 % Use: Classes constraints, schedule(Classes, Sections), Section constraints
-schedule(ListC, ListS) :- set(ListC), set(ListS), join(ListC, ListS),
-						 \+ conflicts(ListS), 
+schedule(ListC, ListS) :- writeln("Generating schedule for:"),
+						 writeln(ListC),
+						 valid_courses(ListC),
+						 set(ListC), set(ListS), join(ListC, ListS),
+						 \+ conflicts(ListS),
 						 subtract(ListC, [var(_)], ListC), subtract(ListS, [var(_)], ListS).
 
 schedule(ListC) :- set(ListC), subtract(ListC, [var(_)], ListC).
 
 schedule(ListS) :- set(ListS), \+ conflicts(ListS), subtract(ListS, [var(_)], ListS).
 
+valid_courses([]).
+valid_courses([C|R]) :- course(C, subject, _), valid_courses(R).
+
+filter_valid_courses([], []) :- false.
+filter_valid_courses([], [F|T]).
+filter_valid_courses([H|T], Filtered) :-
+	course(H, subject, T),
+	filter_valid_courses(T, [H|Filtered]).
+filter_valid_courses([H|T], Filtered) :-
+	\+ course(H, subject, T),
+	filter_valid_courses(T, Filtered).
 
 join([],[]).
 join([Class|ListC], [Section|ListS]) :- course(Class, subject, Sub), section(Section, subject, Sub), 
@@ -101,6 +117,8 @@ notOnDay([S1|Rest], Day) :- section(S1, days, D), dif(D, Day),
 							notOnDay(Rest, Day).
 
 % takes a list of sections
+%conflicts([]) :- !, fail.
+%conflicts([_]) :- !, fail.
 conflicts([S1,S2|_]) :- conflicts(S1, S2).
 conflicts([S1,_|Rest]) :- conflicts([S1|Rest]).
 conflicts([_,S2|Rest]) :- conflicts([S2|Rest]).
@@ -137,3 +155,11 @@ before(time(H, SM1), time(H, SM2)) :- number_string(M1, SM1), number_string(M2, 
 after(time(SH1, _), time(SH2, _)) :- number_string(H1, SH1), number_string(H2, SH2), H1 >= H2.
 after(time(H, SM1), time(H, SM2)) :- number_string(M1, SM1), number_string(M2, SM2), M1 >= M2.
 
+all_in_term([], _) :- false.
+all_in_term([S1, S2|S], Term) :-
+	atom_string(Term, TermNumber),
+	section(S1, term, TermNumber),
+	all_in_term([S2|S], Term).
+all_in_term([S], Term) :-
+    atom_string(Term, TermNumber),
+    section(S, term, TermNumber).
