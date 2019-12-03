@@ -33,11 +33,17 @@ schedule(ListC, ListS) :- set(ListC), set(ListS),
 						 \+ conflicts(ListS), join(ListC, ListS),
 						 subtract(ListC, [var(_)], ListC), subtract(ListS, [var(_)], ListS).
 
+schedule(ListC) :- set(ListC), subtract(ListC, [var(_)], ListC).
+
+schedule(ListS) :- set(ListS), \+ conflicts(ListS), subtract(ListS, [var(_)], ListS).
+
+
 join([],[]).
 join([Class|ListC], [Section|ListS]) :- course(Class, subject, Sub), section(Section, subject, Sub), 
 											course(Class, code, C), section(Section, course, C),
 											join(ListC, ListS).
 
+% Use set before other queries to narrow down results first
 set([]).
 set([E|Es]) :-
    maplist(dif(E), Es),
