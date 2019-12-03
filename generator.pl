@@ -1,5 +1,7 @@
 :- use_module(library(clpfd)).
 
+%%% OLD GENERATOR: See scheduler.pl for improved code
+
 %sections_before_time([], _, _, R, P).
 %sections_before_time([S1|SR], TH, TM, R, P) :- (\+ member(S1, P)), (\+ section_before_time(S1, TH, TM)), sections_before_time(SR, TH, TM, R, [S1|P]).
 %sections_before_time([S1|SR], TH, TM, R, P) :- (\+ member(S1, P)), section_before_time(S1, TH, TM), sections_before_time(SR, TH, TM, [S1|R], [S1|P]).
@@ -9,8 +11,10 @@ section_starts_before_time(S, TH, _) :-
         section(S, start_hour, SH),
         number_string(SHN, SH),
         SHN #< TH.
+
 section_starts_before_time(S, TH, TM) :-
-        section(S, start_hour, SH), number_string(SHN, SH),
+        section(S, start_hour, SH),
+        number_string(SHN, SH),
         section(S, start_minute, SM),
         number_string(SMN, SM),
         SHN #= TH,
@@ -20,14 +24,14 @@ section_starts_after_time(S, TH, _) :-
         section(S, start_hour, SH),
         number_string(SHN, SH),
         SHN #> TH.
+
 section_starts_after_time(S, TH, TM) :-
-        section(S, start_hour, SH), number_string(SHN, SH),
+        section(S, start_hour, SH),
+        number_string(SHN, SH),
         section(S, start_minute, SM),
         number_string(SMN, SM),
         SHN #= TH,
         SMN #> TM.
-
-%section_starts_before_time
 
 % generate_schedule(+ Courses, + Constraints, - Schedule) generates a schedule involving all courses given satisfying all constraints. 
 % It takes in courses as a list of course atoms.
@@ -56,17 +60,17 @@ no_overlapping_sections([Section1, Section2|Sections]) :-
         no_overlapping_sections([Section2|Sections]).
 
 overlapping(Section1, Section2) :-
-    section_times(Section1, SectionStartHour1, SectionStartMinute1, SectionEndHour1, SectionEndMinute1),
-    SectionStartTime1 is SectionStartHour1 * 60 + SectionStartMinute1,
-    SectionEndTime1 is SectionEndHour1 * 60 + SectionEndMinute1,
-    section_times(Section2, SectionStartHour2, SectionStartMinute2, SectionEndHour2, SectionEndMinute2),
-    SectionStartTime2 is SectionStartHour2 * 60 + SectionStartMinute2,
-    SectionEndTime2 is SectionEndHour2 * 60 + SectionEndMinute2,
-    section(Section1, days, SectionDays1),
-    section(Section2, days, SectionDays2),
-    SectionDays1 = SectionDays2,
-    (between(SectionStartTime2, SectionEndTime2, SectionStartTime1); between(SectionStartTime2, SectionEndTime2, SectionEndTime1);
-    between(SectionStartTime1, SectionEndTime1, SectionStartTime2); between(SectionStartTime1, SectionEndTime1, SectionEndTime2)).
+        section_times(Section1, SectionStartHour1, SectionStartMinute1, SectionEndHour1, SectionEndMinute1),
+        SectionStartTime1 is SectionStartHour1 * 60 + SectionStartMinute1,
+        SectionEndTime1 is SectionEndHour1 * 60 + SectionEndMinute1,
+        section_times(Section2, SectionStartHour2, SectionStartMinute2, SectionEndHour2, SectionEndMinute2),
+        SectionStartTime2 is SectionStartHour2 * 60 + SectionStartMinute2,
+        SectionEndTime2 is SectionEndHour2 * 60 + SectionEndMinute2,
+        section(Section1, days, SectionDays1),
+        section(Section2, days, SectionDays2),
+        SectionDays1 = SectionDays2,
+        (between(SectionStartTime2, SectionEndTime2, SectionStartTime1); between(SectionStartTime2, SectionEndTime2, SectionEndTime1);
+        between(SectionStartTime1, SectionEndTime1, SectionStartTime2); between(SectionStartTime1, SectionEndTime1, SectionEndTime2)).
 
 section_between_time(S, StartHour, StartMinute, EndHour, EndMinute) :-
         section(S, start_hour, SectionStartHour),
