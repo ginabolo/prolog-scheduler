@@ -1,5 +1,5 @@
-:- include('generator.pl').
 :- include('scheduler.pl').
+:- include('generator.pl').
 
 topic([courses | L], L, _).
 topic([sections | L], L, _).
@@ -163,13 +163,24 @@ question(L0, L1, Entity) :-
     noun_phrase(L0, L1, Entity).
 
 question([what, are|L0], L1, Entity) :-
-    noun_phrase(L0,L1,Entity).
+    noun_phrase(L0, L1, Entity).
 
 
-%%% Schedule Generation
+% Validation functions
+
+
+% Schedule Generation
+schedule_parameter([without, instructor, First, Last|L], L, Schedule) :-
+    dif(Schedule, []),
+    string(First),
+    string(Last),
+    string_concat(First, " ", N1),
+    string_concat(N1, Last, FullName),
+    avoidInstructor(Schedule, FullName).
+
 schedule_parameter([in, term, TermNumber|L], L, Schedule) :-
+    dif(Schedule, []),
     all_in_term(Schedule, TermNumber).
-    % TODO recurserest of parameters
 
 joining_parameter([,|L], L2, Entity) :-
     schedule_parameter(L, L1, Entity),
@@ -177,29 +188,44 @@ joining_parameter([,|L], L2, Entity) :-
 
 joining_parameter([], [], _).
 
-schedule_courses([for, courses|Courses], R, Schedule) :-
-    schedule(Courses, Schedule).
-    % TODO add recursion for R
+schedule_courses([P, courses, C1, C2, C3, C4, C5, C6, ','|R], R, Schedule) :-
+    member(P, [for, with, having]),
+    valid_courses([C1, C2, C3, C4, C5, C6]),
+    schedule([C1, C2, C3, C4, C5, C6], Schedule).
 
-schedule_courses([with, courses|Courses], R, Schedule) :-
-    schedule(Courses, Schedule).
-    % TODO add recursion for R
+schedule_courses([P, courses, C1, C2, C3, C4, C5, ','|R], R, Schedule) :-
+    member(P, [for, with, having]),
+    valid_courses([C1, C2, C3, C4, C5]),
+    schedule([C1, C2, C3, C4, C5], Schedule).
 
-schedule_courses([having, courses|Courses], R, Schedule) :-
-    schedule(Courses, Schedule).
-    % TODO add recursion for R
+schedule_courses([P, courses, C1, C2, C3, C4, ','|R], R, Schedule) :-
+    member(P, [for, with, having]),
+    valid_courses([C1, C2, C3, C4]),
+    schedule([C1, C2, C3, C4], Schedule).
 
-generate_schedule([generate, schedule|L0], L1, Schedule) :-
-    schedule_courses(L0, L1, Schedule).
+schedule_courses([P, courses, C1, C2, C3, ','|R], R, Schedule) :-
+    member(P, [for, with, having]),
+    valid_courses([C1, C2, C3]),
+    schedule([C1, C2, C3], Schedule).
 
+schedule_courses([P, courses, C1, C2, ','|R], R, Schedule) :-
+    member(P, [for, with, having]),
+    valid_courses([C1, C2]),
+    schedule([C1, C2], Schedule).
+
+schedule_courses([P, courses, C1, ","|R], R, Schedule) :-
+    member(P, [for, with, having]),
+    valid_courses([C1]),
+    schedule([C1], Schedule).
+
+
+% Generate
 generate_schedule([generate, schedule|L0], L3, Schedule) :-
     schedule_courses(L0, L1, Schedule),
-    schedule_parameter(L1, L2, Schedule),
-    joining_parameter(L2, L3, Schedule).
+    schedule_parameter(L1, L3, Schedule).
 
 
-
-%%% Start
+% Start
 ask(Q,A) :-
     question(Q,[],A).
 
@@ -221,3 +247,4 @@ generate(Schedule) :-
     readln(Line),
     generate_schedule(Line, End, Schedule),
     member(End, [[], ['?'], ['.']]).
+
