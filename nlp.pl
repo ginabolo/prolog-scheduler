@@ -165,22 +165,58 @@ question(L0, L1, Entity) :-
 question([what, are|L0], L1, Entity) :-
     noun_phrase(L0, L1, Entity).
 
-
 % Validation functions
 
 
 % Schedule Generation
-schedule_parameter([without, instructor, First, Last|L], L, Schedule) :-
+schedule_parameter([not, taught, by, First, Last|L], L, Schedule) :-
     dif(Schedule, []),
-    string(First),
-    string(Last),
-    string_concat(First, " ", N1),
-    string_concat(N1, Last, FullName),
-    avoidInstructor(Schedule, FullName).
+    atom_string(First, FN),
+    atom_string(Last, LN),
+    string_concat(FN, " ", N1),
+    string_concat(N1, LN, FullName),
+    string_upper(FullName, Upper),
+    avoidInstructor(Schedule, Upper).
 
 schedule_parameter([in, term, TermNumber|L], L, Schedule) :-
     dif(Schedule, []),
     all_in_term(Schedule, TermNumber).
+
+schedule_parameter([without, instructor, First, Last|L], L, Schedule) :-
+    dif(Schedule, []),
+    atom_string(First, FN),
+    atom_string(Last, LN),
+    string_concat(FN, " ", N1),
+    string_concat(N1, LN, FullName),
+    string_upper(FullName, Upper),
+    avoidInstructor(Schedule, Upper).
+
+schedule_parameter([after, Hour, Minute|L], L, Schedule) :-
+    dif(Schedule, []),
+    all_start_after_time(Schedule, Hour, Minute).
+
+schedule_parameter([before, Hour, Minute|L], L, Schedule) :-
+    dif(Schedule, []),
+    all_end_before_time(Schedule, Hour, Minute).
+
+schedule_parameter([not, on, D1, D2|L], L, Schedule) :-
+    dif(Schedule, []),
+    atom_string(D1, DS1),
+    atom_string(D2, DS2),
+    string_concat(DS1, " ", DP1),
+    string_concat(DP1, DS2, D),
+    notOnDay(Schedule, D).
+
+schedule_parameter([not, on, D1, D2, D3|L], L, Schedule) :-
+    dif(Schedule, []),
+    atom_string(D1, DS1),
+    atom_string(D2, DS2),
+    atom_string(D3, DS3),
+    string_concat(DS1, " ", DP1),
+    string_concat(DP1, DS2, DP2),
+    string_concat(DP2, " ", DP3),
+    string_concat(DP3, DS3, D),
+    notOnDay(Schedule, D).
 
 joining_parameter([,|L], L2, Entity) :-
     schedule_parameter(L, L1, Entity),
@@ -213,7 +249,7 @@ schedule_courses([P, courses, C1, C2, ','|R], R, Schedule) :-
     valid_courses([C1, C2]),
     schedule([C1, C2], Schedule).
 
-schedule_courses([P, courses, C1, ","|R], R, Schedule) :-
+schedule_courses([P, courses, C1, ','|R], R, Schedule) :-
     member(P, [for, with, having]),
     valid_courses([C1]),
     schedule([C1], Schedule).
@@ -223,7 +259,6 @@ schedule_courses([P, courses, C1, ","|R], R, Schedule) :-
 generate_schedule([generate, schedule|L0], L3, Schedule) :-
     schedule_courses(L0, L1, Schedule),
     schedule_parameter(L1, L3, Schedule).
-
 
 % Start
 ask(Q,A) :-
@@ -248,3 +283,11 @@ generate(Schedule) :-
     generate_schedule(Line, End, Schedule),
     member(End, [[], ['?'], ['.']]).
 
+
+% Try:
+% facts about cpsc_312
+% generate schedule for courses cpsc_210 , without instructor elisa baniassad
+% generate schedule for courses cpsc_312 , without instructor david poole
+% generate schedule for courses cpsc_304 cpsc_311 cpsc_312 cpsc_313 cpsc_322 , in term 1
+% generate schedule for courses cpsc_304 cpsc_311 cpsc_312 cpsc_313 cpsc_322 , after 9 0
+% generate schedule for courses cpsc_310 cpsc_213 , not on Tue Thu
