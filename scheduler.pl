@@ -22,6 +22,7 @@
 :- include('courses.pl').
 :- include('sections.pl').
 :- use_module(library(time)).
+:- use_module(library(clpfd)).
 
 
 % Takes a list of classes and list of sections and makes sure they correspond.
@@ -72,7 +73,7 @@ hasInstructor([_|Rest], Instructor) :- hasInstructor(Rest, Instructor).
 
 % Takes list of sections, and a constant denoting an instructor
 avoidInstructor([], _).
-avoidInstructor([S1|Rest], Instructor) :- section(S1, instructor, I), dif(I, Instructor), avoidInstructor(Rest, Instructor).
+avoidInstructor([S1|Rest], Instructor) :- section(S1, instructor, I), string_upper(Instructor, U), dif(U, I), avoidInstructor(Rest, Instructor).
 
 
 % takes a list of sections, a number of classes for each term
@@ -163,3 +164,97 @@ all_in_term([S1, S2|S], Term) :-
 all_in_term([S], Term) :-
     atom_string(Term, TermNumber),
     section(S, term, TermNumber).
+
+all_between_times([], _, _, _, _).
+all_between_times([Section|Sections], StartHour, StartMinute, EndHour, EndMinute) :-
+	(section_starts_after_time(Section, StartHour, StartMinute); section_starts_at_time(Section, StartHour, StartMinue)),
+	(section_ends_after_time(Section, EndHour, EndMinute); section_ends_at_time(Section, EndHour, EndMinute)),
+	all_between_times(Sections, StartHour, StartMinute, EndHour, EndMinute).
+
+all_start_before_time([], _, _).
+all_start_before_time([Section|Sections], Hour, Minute) :-
+	section_starts_before_time(Section, Hour, Minute),
+	all_start_before_time(Sections, Hour, Minute).
+
+all_end_before_time([], _, _).
+all_end_before_time([Section|Sections], Hour, Minute) :-
+	section_ends_before_time(Section, Hour, Minute),
+	all_end_before_time(Sections, Hour, Minute).
+
+all_start_after_time([], _, _).
+all_start_after_time([Section|Sections], Hour, Minute) :-
+	section_starts_after_time(Section, Hour, Minute),
+	all_start_after_time(Sections, Hour, Minute).
+
+all_end_after_time([], _, _).
+all_end_after_time([Section|Sections], Hour, Minute) :-
+	section_ends_after_time(Section, Hour, Minute),
+	all_end_after_time(Sections, Hour, Minute).
+
+section_starts_before_time(S, TH, _) :-
+	section(S, start_hour, SH),
+	number_string(SHN, SH),
+	SHN #< TH.
+
+section_starts_before_time(S, TH, TM) :-
+	section(S, start_hour, SH),
+	number_string(SHN, SH),
+	section(S, start_minute, SM),
+	number_string(SMN, SM),
+	SHN #= TH,
+	SMN #< TM.
+
+section_ends_before_time(S, TH, _) :-
+	section(S, end_hour, SH),
+	number_string(SHN, SH),
+	SHN #> TH.
+
+section_ends_before_time(S, TH, TM) :-
+	section(S, end_hour, SH),
+	number_string(SHN, SH),
+	section(S, end_minute, SM),
+	number_string(SMN, SM),
+	SHN #= TH,
+	SMN #> TM.
+
+section_starts_after_time(S, TH, _) :-
+	section(S, start_hour, SH),
+	number_string(SHN, SH),
+	SHN #> TH.
+
+section_starts_after_time(S, TH, TM) :-
+	section(S, start_hour, SH),
+	number_string(SHN, SH),
+	section(S, start_minute, SM),
+	number_string(SMN, SM),
+	SHN #= TH,
+	SMN #> TM.
+
+section_ends_after_time(S, TH, _) :-
+	section(S, end_hour, SH),
+	number_string(SHN, SH),
+	SHN #> TH.
+
+section_ends_after_time(S, TH, TM) :-
+	section(S, end_hour, SH),
+	number_string(SHN, SH),
+	section(S, end_minute, SM),
+	number_string(SMN, SM),
+	SHN #= TH,
+	SMN #> TM.
+
+section_starts_at_time(S, TH, TM) :-
+	section(S, start_hour, SH),
+	number_string(SHN, SH),
+	section(S, start_minute, SM),
+	number_string(SMN, SM),
+	SHN #= TH,
+	SMN #= TM.
+
+section_ends_at_time(S, TH, TM) :-
+	section(S, end_hour, SH),
+	number_string(SHN, SH),
+	section(S, end_minute, SM),
+	number_string(SMN, SM),
+	SHN #= TH,
+	SMN #= TM.
